@@ -1,5 +1,6 @@
 import type { KeyOfEach } from '@rocket.chat/core-typings';
 
+import type { ActivityHubEndpoints } from './v1/activity-hub';
 import type { AppsEndpoints } from './apps';
 import type { DefaultEndpoints } from './default';
 import type { ReplacePlaceholders } from './helpers/ReplacePlaceholders';
@@ -90,6 +91,7 @@ export interface Endpoints
 		AuthEndpoints,
 		ImportEndpoints,
 		ServerEventsEndpoints,
+		ActivityHubEndpoints,
 		DefaultEndpoints {}
 
 type OperationsByPathPatternAndMethod<
@@ -256,6 +258,7 @@ export * from './v1/auth';
 export * from './v1/cloud';
 export * from './v1/banners';
 export * from './default';
+export * from './v1/activity-hub';
 
 // Export the ajv instance for use in other packages
 export * from './v1/Ajv';
