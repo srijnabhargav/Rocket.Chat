@@ -1,4 +1,4 @@
-import type { IMessage } from '@rocket.chat/core-typings';
+import type { IMessage, RoomType } from '@rocket.chat/core-typings';
 
 import { ajv } from './Ajv';
 
@@ -6,6 +6,7 @@ type ActivityHubMentionsParams = {
 	count?: number;
 	offset?: number;
 	sort?: string;
+	roomType?: RoomType;
 };
 
 const ActivityHubMentionsSchema = {
@@ -23,6 +24,11 @@ const ActivityHubMentionsSchema = {
 			type: 'string',
 			nullable: true,
 		},
+		roomType: {
+			type: 'string',
+			enum: ['c', 'd', 'p', 'l'],
+			nullable: true,
+		},
 	},
 	additionalProperties: false,
 };
@@ -33,6 +39,7 @@ type ActivityHubStarredMessagesParams = {
 	count?: number;
 	offset?: number;
 	sort?: string;
+	roomType?: RoomType;
 };
 
 const ActivityHubStarredMessagesSchema = {
@@ -48,6 +55,11 @@ const ActivityHubStarredMessagesSchema = {
 		},
 		sort: {
 			type: 'string',
+			nullable: true,
+		},
+		roomType: {
+			type: 'string',
+			enum: ['c', 'd', 'p', 'l'],
 			nullable: true,
 		},
 	},

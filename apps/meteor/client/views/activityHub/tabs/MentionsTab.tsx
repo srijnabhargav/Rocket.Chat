@@ -1,4 +1,4 @@
-import type { IMessage } from '@rocket.chat/core-typings';
+import type { IMessage, RoomType } from '@rocket.chat/core-typings';
 import { States, StatesIcon, StatesTitle, StatesSubtitle, Box, Throbber } from '@rocket.chat/fuselage';
 import { useEndpoint } from '@rocket.chat/ui-contexts';
 import { useQuery } from '@tanstack/react-query';
@@ -7,14 +7,22 @@ import { useTranslation } from 'react-i18next';
 import { mapMessageFromApi } from '../../../lib/utils/mapMessageFromApi';
 import ActivityMessageList from '../components/ActivityMessageList';
 
-const MentionsTab = () => {
+type MentionsTabProps = {
+	roomType: 'all' | RoomType;
+};
+
+const MentionsTab = ({ roomType }: MentionsTabProps) => {
 	const { t } = useTranslation();
 	const getMentions = useEndpoint('GET', '/v1/activity-hub.mentions');
 
 	const mentionsQuery = useQuery({
-		queryKey: ['activity-hub', 'mentions'],
+		queryKey: ['activity-hub', 'mentions', roomType],
 		queryFn: async () => {
-			const result = await getMentions({ count: 100, offset: 0 });
+			const params: { count: number; offset: number; roomType?: RoomType } = { count: 100, offset: 0 };
+			if (roomType !== 'all') {
+				params.roomType = roomType;
+			}
+			const result = await getMentions(params);
 			return result.messages.map(mapMessageFromApi);
 		},
 	});

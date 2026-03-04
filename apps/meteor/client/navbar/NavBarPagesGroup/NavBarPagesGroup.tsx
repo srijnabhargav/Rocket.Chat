@@ -25,10 +25,10 @@ const NavBarPagesGroup = () => {
 				<>
 					<NavBarItemHomePage title={t('Home')} />
 					<NavBarItemDirectoryPage title={t('Directory')} />
-					<NavBarItemActivityHub title={t('Activity_Hub')} />
 				</>
 			)}
 			{showMarketplace && !isMobile && <NavBarItemMarketPlaceMenu />}
+			{!isTablet && <NavBarItemActivityHub title={t('Activity_Hub')} />}
 			{!isMobile && <NavBarItemSort />}
 			<NavBarItemCreateNew />
 		</NavBarGroup>
