@@ -7,17 +7,17 @@ import { useTranslation } from 'react-i18next';
 import { mapMessageFromApi } from '../../../lib/utils/mapMessageFromApi';
 import ActivityMessageList from '../components/ActivityMessageList';
 
-type MentionsTabProps = {
+type ThreadsTabProps = {
 	roomType: 'all' | RoomType;
 	unread: boolean;
 };
 
-const MentionsTab = ({ roomType, unread }: MentionsTabProps) => {
+const ThreadsTab = ({ roomType, unread }: ThreadsTabProps) => {
 	const { t } = useTranslation();
-	const getMentions = useEndpoint('GET', '/v1/activity-hub.mentions');
+	const getThreads = useEndpoint('GET', '/v1/activity-hub.threads');
 
-	const mentionsQuery = useQuery({
-		queryKey: ['activity-hub', 'mentions', roomType, unread],
+	const threadsQuery = useQuery({
+		queryKey: ['activity-hub', 'threads', roomType, unread],
 		queryFn: async () => {
 			const params: { count: number; offset: number; roomType?: RoomType; unread?: boolean } = { count: 50, offset: 0 };
 			if (roomType !== 'all') {
@@ -26,12 +26,12 @@ const MentionsTab = ({ roomType, unread }: MentionsTabProps) => {
 			if (unread) {
 				params.unread = true;
 			}
-			const result = await getMentions(params);
+			const result = await getThreads(params);
 			return result.messages.map(mapMessageFromApi);
 		},
 	});
 
-	if (mentionsQuery.isLoading) {
+	if (threadsQuery.isLoading) {
 		return (
 			<Box display='flex' justifyContent='center' alignItems='center' paddingBlock={24}>
 				<Throbber size='x12' />
@@ -39,23 +39,23 @@ const MentionsTab = ({ roomType, unread }: MentionsTabProps) => {
 		);
 	}
 
-	if (mentionsQuery.isError) {
+	if (threadsQuery.isError) {
 		return (
 			<States>
 				<StatesIcon name='warning' />
 				<StatesTitle>{t('Error')}</StatesTitle>
-				<StatesSubtitle>{t('Error_loading_mentions')}</StatesSubtitle>
+				<StatesSubtitle>{t('Error_loading_threads')}</StatesSubtitle>
 			</States>
 		);
 	}
 
-	const messages: IMessage[] = mentionsQuery.data ?? [];
+	const messages: IMessage[] = threadsQuery.data ?? [];
 
 	if (messages.length === 0) {
 		return (
 			<States>
-				<StatesIcon name='magnifier' />
-				<StatesTitle>{t('No_mentions_found')}</StatesTitle>
+				<StatesIcon name='thread' />
+				<StatesTitle>{t('No_threads_found')}</StatesTitle>
 			</States>
 		);
 	}
@@ -63,5 +63,4 @@ const MentionsTab = ({ roomType, unread }: MentionsTabProps) => {
 	return <ActivityMessageList messages={messages} />;
 };
 
-export default MentionsTab;
-
+export default ThreadsTab;
