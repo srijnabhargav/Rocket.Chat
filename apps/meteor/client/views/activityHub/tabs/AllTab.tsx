@@ -10,11 +10,13 @@ import ActivityList from '../components/ActivityList';
 type AllTabProps = {
 	roomType: 'all' | RoomType;
 	unread: boolean;
+	onSelectActivity?: (activity: ActivityItem) => void;
+	selectedActivityId?: string;
 };
 
 const PAGE_SIZE = 50;
 
-const AllTab = ({ roomType, unread }: AllTabProps) => {
+const AllTab = ({ roomType, unread, onSelectActivity, selectedActivityId }: AllTabProps) => {
 	const { t } = useTranslation();
 	const getActivities = useEndpoint('GET', '/v1/activity-hub.activities');
 
@@ -77,6 +79,8 @@ const AllTab = ({ roomType, unread }: AllTabProps) => {
 					void activitiesQuery.fetchNextPage();
 				}
 			}}
+			onSelectActivity={onSelectActivity}
+			selectedActivityId={selectedActivityId}
 		/>
 	);
 };

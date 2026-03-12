@@ -1,13 +1,16 @@
+import type { IMessage } from '@rocket.chat/core-typings';
 import { Tabs, IconButton, Select, Box, ToggleSwitch, Button } from '@rocket.chat/fuselage';
 import type { SelectOption } from '@rocket.chat/fuselage';
 import { useEffectEvent } from '@rocket.chat/fuselage-hooks';
-import { Page, PageHeader, PageContent } from '@rocket.chat/ui-client';
+import { Page, PageHeader } from '@rocket.chat/ui-client';
 import { useRouter, useRouteParameter, useEndpoint } from '@rocket.chat/ui-contexts';
 import type { ReactElement } from 'react';
 import { useEffect, useCallback, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { ActivityItem } from '@rocket.chat/rest-typings';
 
+import ActivityPreviewPanel from './components/ActivityPreviewPanel';
 import AllTab from './tabs/AllTab';
 import InvitationsTab from './tabs/InvitationsTab';
 import MentionsTab from './tabs/MentionsTab';
@@ -18,12 +21,18 @@ import ThreadsTab from './tabs/ThreadsTab';
 type TabName = 'all' | 'mentions' | 'threads' | 'reactions' | 'starred' | 'invitations';
 type RoomTypeFilter = 'all' | 'c' | 'd' | 'p';
 
+type SelectedItem =
+	| { kind: 'message'; message: IMessage }
+	| { kind: 'activity'; activity: ActivityItem }
+	| null;
+
 const ActivityHubPage = (): ReactElement => {
 	const { t } = useTranslation();
 	const tab = useRouteParameter('tab') as TabName | undefined;
 	const router = useRouter();
 	const [roomType, setRoomType] = useState<RoomTypeFilter>('all');
 	const [unread, setUnread] = useState(false);
+	const [selected, setSelected] = useState<SelectedItem>(null);
 	const queryClient = useQueryClient();
 
 	const markAllRead = useEndpoint('POST', '/v1/activity-hub.markAllRead');
@@ -37,7 +46,7 @@ const ActivityHubPage = (): ReactElement => {
 
 	const filterOptions: SelectOption[] = useMemo(
 		() => [
-			['all', t('All')],
+			['all', t('All_rooms')],
 			['c', t('Channels')],
 			['d', t('Direct_Messages')],
 			['p', t('Private_Groups')],
@@ -61,16 +70,53 @@ const ActivityHubPage = (): ReactElement => {
 		[router],
 	);
 
-	const handleTabClick = useCallback((tab: TabName) => () => router.navigate(`/activity-hub/${tab}`), [router]);
+	// Clear preview when switching tabs
+	const handleTabClick = useCallback(
+		(tab: TabName) => () => {
+			setSelected(null);
+			router.navigate(`/activity-hub/${tab}`);
+		},
+		[router],
+	);
 
 	const handleClose = useEffectEvent(() => {
 		router.navigate('/home');
 	});
 
+	const handleSelectMessage = useCallback((message: IMessage) => {
+		setSelected({ kind: 'message', message });
+	}, []);
+
+	const handleSelectActivity = useCallback((activity: ActivityItem) => {
+		setSelected({ kind: 'activity', activity });
+	}, []);
+
+	const selectedMessageId = selected?.kind === 'message' ? selected.message._id : undefined;
+	const selectedActivityId = selected?.kind === 'activity' ? selected.activity._id : undefined;
+
+	// Derive IMessage for the preview panel
+	const previewMessage: IMessage | null = (() => {
+		if (!selected) return null;
+		if (selected.kind === 'message') return selected.message;
+		// For unified ActivityItem, reconstruct a minimal IMessage-like object if msgId is present
+		if (selected.kind === 'activity' && selected.activity.msgId) {
+			return {
+				_id: selected.activity.msgId,
+				rid: selected.activity.rid,
+				msg: selected.activity.msg ?? '',
+				ts: new Date(selected.activity.ts),
+				u: selected.activity.actor as IMessage['u'],
+				_updatedAt: new Date(selected.activity.ts),
+			} as IMessage;
+		}
+		return null;
+	})();
+
 	const isInvitationsTab = tab === 'invitations';
 
 	return (
 		<Page background='room'>
+			{/* Header: title + controls */}
 			<PageHeader title={t('Activity_Hub')}>
 				<Button
 					small
@@ -82,7 +128,18 @@ const ActivityHubPage = (): ReactElement => {
 				</Button>
 				<IconButton icon='cross' title={t('Close')} onClick={handleClose} small />
 			</PageHeader>
-			<Box display='flex' alignItems='center' justifyContent='space-between' paddingInline={24} paddingBlock={8}>
+
+			{/* Controls row: tabs + unread toggle + channel filter */}
+			<Box
+				display='flex'
+				alignItems='center'
+				justifyContent='space-between'
+				paddingInline={16}
+				paddingBlock={8}
+				flexShrink={0}
+				borderBlockEnd='1px solid'
+				borderColor='stroke-extra-light'
+			>
 				<Tabs flexShrink={0}>
 					<Tabs.Item selected={tab === 'all'} onClick={handleTabClick('all')}>
 						{t('All')}
@@ -103,20 +160,27 @@ const ActivityHubPage = (): ReactElement => {
 						{t('Invitations')}
 					</Tabs.Item>
 				</Tabs>
-				<Box display='flex' alignItems='center' style={{ columnGap: '12px' }}>
+
+				<Box display='flex' alignItems='center' style={{ gap: '12px' }}>
 					{!isInvitationsTab && (
-						<Box display='flex' alignItems='center' style={{ columnGap: '8px' }}>
+						<Box display='flex' alignItems='center' style={{ gap: '6px' }}>
 							<ToggleSwitch
 								id='activity-hub-unread-toggle'
 								checked={unread}
 								onChange={() => setUnread((prev) => !prev)}
 							/>
-							<Box is='label' htmlFor='activity-hub-unread-toggle' fontScale='p2' color='default' style={{ cursor: 'pointer' }}>
-								{t('Unread')}
+							<Box
+								is='label'
+								htmlFor='activity-hub-unread-toggle'
+								fontScale='p2'
+								color='default'
+								style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}
+							>
+								{t('Unread_messages')}
 							</Box>
 						</Box>
 					)}
-					<Box width='x200'>
+					<Box width='x180'>
 						<Select
 							options={filterOptions}
 							value={roomType}
@@ -125,14 +189,79 @@ const ActivityHubPage = (): ReactElement => {
 					</Box>
 				</Box>
 			</Box>
-			<PageContent>
-				{tab === 'all' && <AllTab roomType={roomType} unread={unread} />}
-				{tab === 'mentions' && <MentionsTab roomType={roomType} unread={unread} />}
-				{tab === 'threads' && <ThreadsTab roomType={roomType} unread={unread} />}
-				{tab === 'reactions' && <ReactionsTab roomType={roomType} />}
-				{tab === 'starred' && <StarredMessagesTab roomType={roomType} />}
-				{tab === 'invitations' && <InvitationsTab />}
-			</PageContent>
+
+			{/* Two-column body */}
+			<Box display='flex' flexGrow={1} overflow='hidden'>
+				{/* Left panel: activity feed */}
+				<Box
+					display='flex'
+					flexDirection='column'
+					flexShrink={0}
+					overflow='hidden'
+					borderInlineEnd='1px solid'
+					borderColor='stroke-extra-light'
+					style={{ width: '420px' }}
+				>
+					{tab === 'all' && (
+						<AllTab
+							roomType={roomType}
+							unread={unread}
+							onSelectActivity={handleSelectActivity}
+							selectedActivityId={selectedActivityId}
+						/>
+					)}
+					{tab === 'mentions' && (
+						<MentionsTab
+							roomType={roomType}
+							unread={unread}
+							onSelectMessage={handleSelectMessage}
+							selectedMessageId={selectedMessageId}
+						/>
+					)}
+					{tab === 'threads' && (
+						<ThreadsTab
+							roomType={roomType}
+							unread={unread}
+							onSelectMessage={handleSelectMessage}
+							selectedMessageId={selectedMessageId}
+						/>
+					)}
+					{tab === 'reactions' && (
+						<ReactionsTab
+							roomType={roomType}
+							onSelectMessage={handleSelectMessage}
+							selectedMessageId={selectedMessageId}
+						/>
+					)}
+					{tab === 'starred' && (
+						<StarredMessagesTab
+							roomType={roomType}
+							onSelectMessage={handleSelectMessage}
+							selectedMessageId={selectedMessageId}
+						/>
+					)}
+					{tab === 'invitations' && <InvitationsTab />}
+				</Box>
+
+				{/* Right panel: conversation preview */}
+				<Box display='flex' flexDirection='column' flexGrow={1} overflow='hidden'>
+					{!isInvitationsTab && <ActivityPreviewPanel message={previewMessage} />}
+					{isInvitationsTab && (
+						<Box
+							display='flex'
+							flexDirection='column'
+							alignItems='center'
+							justifyContent='center'
+							height='full'
+							color='hint'
+						>
+							<Box fontScale='p1' color='hint' textAlign='center' pi={32}>
+								{t('Select_activity_to_preview')}
+							</Box>
+						</Box>
+					)}
+				</Box>
+			</Box>
 		</Page>
 	);
 };

@@ -10,9 +10,11 @@ import ActivityMessageList from '../components/ActivityMessageList';
 type MentionsTabProps = {
 	roomType: 'all' | RoomType;
 	unread: boolean;
+	onSelectMessage?: (message: IMessage) => void;
+	selectedMessageId?: string;
 };
 
-const MentionsTab = ({ roomType, unread }: MentionsTabProps) => {
+const MentionsTab = ({ roomType, unread, onSelectMessage, selectedMessageId }: MentionsTabProps) => {
 	const { t } = useTranslation();
 	const getMentions = useEndpoint('GET', '/v1/activity-hub.mentions');
 
@@ -60,8 +62,14 @@ const MentionsTab = ({ roomType, unread }: MentionsTabProps) => {
 		);
 	}
 
-	return <ActivityMessageList messages={messages} />;
+	return (
+		<ActivityMessageList
+			messages={messages}
+			activityType='mention'
+			onSelectMessage={onSelectMessage}
+			selectedMessageId={selectedMessageId}
+		/>
+	);
 };
 
 export default MentionsTab;
-

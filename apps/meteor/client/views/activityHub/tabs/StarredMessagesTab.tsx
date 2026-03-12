@@ -9,9 +9,11 @@ import ActivityMessageList from '../components/ActivityMessageList';
 
 type StarredMessagesTabProps = {
 	roomType: 'all' | RoomType;
+	onSelectMessage?: (message: IMessage) => void;
+	selectedMessageId?: string;
 };
 
-const StarredMessagesTab = ({ roomType }: StarredMessagesTabProps) => {
+const StarredMessagesTab = ({ roomType, onSelectMessage, selectedMessageId }: StarredMessagesTabProps) => {
 	const { t } = useTranslation();
 	const getStarredMessages = useEndpoint('GET', '/v1/activity-hub.starred-messages');
 
@@ -56,8 +58,14 @@ const StarredMessagesTab = ({ roomType }: StarredMessagesTabProps) => {
 		);
 	}
 
-	return <ActivityMessageList messages={messages} />;
+	return (
+		<ActivityMessageList
+			messages={messages}
+			activityType='star'
+			onSelectMessage={onSelectMessage}
+			selectedMessageId={selectedMessageId}
+		/>
+	);
 };
 
 export default StarredMessagesTab;
-

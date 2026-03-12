@@ -9,9 +9,11 @@ import ActivityMessageList from '../components/ActivityMessageList';
 
 type ReactionsTabProps = {
 	roomType: 'all' | RoomType;
+	onSelectMessage?: (message: IMessage) => void;
+	selectedMessageId?: string;
 };
 
-const ReactionsTab = ({ roomType }: ReactionsTabProps) => {
+const ReactionsTab = ({ roomType, onSelectMessage, selectedMessageId }: ReactionsTabProps) => {
 	const { t } = useTranslation();
 	const getReactions = useEndpoint('GET', '/v1/activity-hub.reactions');
 
@@ -56,7 +58,14 @@ const ReactionsTab = ({ roomType }: ReactionsTabProps) => {
 		);
 	}
 
-	return <ActivityMessageList messages={messages} />;
+	return (
+		<ActivityMessageList
+			messages={messages}
+			activityType='reaction'
+			onSelectMessage={onSelectMessage}
+			selectedMessageId={selectedMessageId}
+		/>
+	);
 };
 
 export default ReactionsTab;

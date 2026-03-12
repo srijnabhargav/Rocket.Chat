@@ -48,7 +48,7 @@ const InvitationsTab = () => {
 	}
 
 	return (
-		<Box display='flex' flexDirection='column' flexGrow={1} overflow='hidden'>
+		<Box display='flex' flexDirection='column' flexGrow={1} overflow='auto'>
 			{invitations.map((inv) => (
 				<InvitationItem key={inv._id} subscription={inv} />
 			))}

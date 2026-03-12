@@ -10,9 +10,11 @@ import ActivityMessageList from '../components/ActivityMessageList';
 type ThreadsTabProps = {
 	roomType: 'all' | RoomType;
 	unread: boolean;
+	onSelectMessage?: (message: IMessage) => void;
+	selectedMessageId?: string;
 };
 
-const ThreadsTab = ({ roomType, unread }: ThreadsTabProps) => {
+const ThreadsTab = ({ roomType, unread, onSelectMessage, selectedMessageId }: ThreadsTabProps) => {
 	const { t } = useTranslation();
 	const getThreads = useEndpoint('GET', '/v1/activity-hub.threads');
 
@@ -60,7 +62,14 @@ const ThreadsTab = ({ roomType, unread }: ThreadsTabProps) => {
 		);
 	}
 
-	return <ActivityMessageList messages={messages} />;
+	return (
+		<ActivityMessageList
+			messages={messages}
+			activityType='thread'
+			onSelectMessage={onSelectMessage}
+			selectedMessageId={selectedMessageId}
+		/>
+	);
 };
 
 export default ThreadsTab;
