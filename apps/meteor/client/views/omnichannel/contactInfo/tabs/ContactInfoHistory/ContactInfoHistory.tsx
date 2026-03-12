@@ -2,15 +2,15 @@ import type { ILivechatContact, Serialized } from '@rocket.chat/core-typings';
 import { OmnichannelSourceType } from '@rocket.chat/core-typings';
 import { Box, Margins, Throbber, States, StatesIcon, StatesTitle, Select } from '@rocket.chat/fuselage';
 import { useLocalStorage } from '@rocket.chat/fuselage-hooks';
-import { VirtualizedScrollbars, ContextualbarContent, ContextualbarEmptyContent } from '@rocket.chat/ui-client';
+import { ContextualbarContent, ContextualbarEmptyContent } from '@rocket.chat/ui-client';
 import { useEndpoint, useSetModal } from '@rocket.chat/ui-contexts';
 import { useQuery } from '@tanstack/react-query';
 import type { Key } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Virtuoso } from 'react-virtuoso';
 
 import ContactInfoHistoryItem from './ContactInfoHistoryItem';
+import { VirtualList } from '../../../../../components/VirtualList';
 import { useHasLicenseModule } from '../../../../../hooks/useHasLicenseModule';
 import { useOmnichannelSource } from '../../../hooks/useOmnichannelSource';
 import AdvancedContactModal from '../../AdvancedContactModal';
@@ -111,15 +111,13 @@ const ContactInfoHistory = ({ contact, setChatId }: ContactInfoHistoryProps) => 
 							{t('Showing_current_of_total', { current: data?.history.length, total: data?.total })}
 						</Box>
 					</Box>
-					<Box role='list' height='100%' overflow='hidden' flexShrink={1}>
-						<VirtualizedScrollbars>
-							<Virtuoso
-								totalCount={data.history.length}
-								overscan={25}
-								data={data?.history}
-								itemContent={(index, data) => <ContactInfoHistoryItem key={index} onClick={() => setChatId(data._id)} {...data} />}
-							/>
-						</VirtualizedScrollbars>
+					<Box flexGrow={1} flexShrink={1} overflow='hidden' display='flex'>
+						<VirtualList
+							items={data.history}
+							totalCount={data.history.length}
+							estimateSize={() => 70}
+							renderItem={(item) => <ContactInfoHistoryItem key={item._id} onClick={() => setChatId(item._id)} {...item} />}
+						/>
 					</Box>
 				</>
 			)}
