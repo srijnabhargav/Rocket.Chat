@@ -33,7 +33,7 @@ const StarredMessagesTab = ({ roomType, onSelectMessage, selectedMessageId }: St
 		);
 	}
 
-	const messages: IMessage[] = starredQuery.data ?? [];
+	const messages: IMessage[] = starredQuery.data?.messages ?? [];
 
 	if (messages.length === 0) {
 		return (
@@ -50,6 +50,11 @@ const StarredMessagesTab = ({ roomType, onSelectMessage, selectedMessageId }: St
 			activityType='star'
 			onSelectMessage={onSelectMessage}
 			selectedMessageId={selectedMessageId}
+			onEndReached={() => {
+				if (starredQuery.hasNextPage && !starredQuery.isFetchingNextPage) {
+					void starredQuery.fetchNextPage();
+				}
+			}}
 		/>
 	);
 };

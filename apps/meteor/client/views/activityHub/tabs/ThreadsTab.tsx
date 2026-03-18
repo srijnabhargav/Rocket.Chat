@@ -34,7 +34,7 @@ const ThreadsTab = ({ roomType, unread, onSelectMessage, selectedMessageId }: Th
 		);
 	}
 
-	const messages: IMessage[] = threadsQuery.data ?? [];
+	const messages: IMessage[] = threadsQuery.data?.messages ?? [];
 
 	if (messages.length === 0) {
 		return (
@@ -51,6 +51,11 @@ const ThreadsTab = ({ roomType, unread, onSelectMessage, selectedMessageId }: Th
 			activityType='thread'
 			onSelectMessage={onSelectMessage}
 			selectedMessageId={selectedMessageId}
+			onEndReached={() => {
+				if (threadsQuery.hasNextPage && !threadsQuery.isFetchingNextPage) {
+					void threadsQuery.fetchNextPage();
+				}
+			}}
 		/>
 	);
 };

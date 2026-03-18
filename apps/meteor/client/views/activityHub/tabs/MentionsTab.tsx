@@ -34,7 +34,7 @@ const MentionsTab = ({ roomType, unread, onSelectMessage, selectedMessageId }: M
 		);
 	}
 
-	const messages: IMessage[] = mentionsQuery.data ?? [];
+	const messages: IMessage[] = mentionsQuery.data?.messages ?? [];
 
 	if (messages.length === 0) {
 		return (
@@ -51,6 +51,11 @@ const MentionsTab = ({ roomType, unread, onSelectMessage, selectedMessageId }: M
 			activityType='mention'
 			onSelectMessage={onSelectMessage}
 			selectedMessageId={selectedMessageId}
+			onEndReached={() => {
+				if (mentionsQuery.hasNextPage && !mentionsQuery.isFetchingNextPage) {
+					void mentionsQuery.fetchNextPage();
+				}
+			}}
 		/>
 	);
 };

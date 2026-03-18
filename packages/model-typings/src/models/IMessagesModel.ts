@@ -41,9 +41,30 @@ export interface IMessagesModel extends IBaseModel<IMessage> {
 
 	findStarredByUserAtRoom(userId: IUser['_id'], roomId: IRoom['_id'], options?: FindOptions<IMessage>): FindPaginated<FindCursor<IMessage>>;
 
-	findPaginatedStarredByUser(userId: IUser['_id'], options?: FindOptions<IMessage>): FindPaginated<FindCursor<IMessage>>;
+	findPaginatedStarredByUser(
+		userId: IUser['_id'],
+		rids?: IRoom['_id'][],
+		options?: FindOptions<IMessage>,
+	): FindPaginated<FindCursor<IMessage>>;
 
-	findPaginatedVisibleByMention(username: IUser['username'], options?: FindOptions<IMessage>): FindPaginated<FindCursor<IMessage>>;
+	findPaginatedVisibleByMention(
+		username: IUser['username'],
+		rids?: IRoom['_id'][],
+		options?: FindOptions<IMessage>,
+	): FindPaginated<FindCursor<IMessage>>;
+
+	findPaginatedThreadsByUser(
+		userId: IUser['_id'],
+		threadIds?: IMessage['_id'][],
+		rids?: IRoom['_id'][],
+		options?: FindOptions<IMessage>,
+	): FindPaginated<FindCursor<IMessage>>;
+
+	findPaginatedReactionsByUser(
+		userId: IUser['_id'],
+		rids?: IRoom['_id'][],
+		options?: FindOptions<IMessage>,
+	): FindPaginated<FindCursor<IMessage>>;
 
 	findPaginatedByRoomIdAndType(
 		roomId: IRoom['_id'],

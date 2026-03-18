@@ -21,11 +21,6 @@ async function getRoomIdsByType(userId: string, roomType: RoomType): Promise<str
 	return subscriptions.map((sub) => sub.rid);
 }
 
-async function getRoomName(rid: string): Promise<string> {
-	const room = await Rooms.findById(rid, { projection: { name: 1, fname: 1 } });
-	return room?.fname || room?.name || rid;
-}
-
 API.v1.addRoute(
 	'activity-hub.mentions',
 	{ authRequired: true, validateParams: isActivityHubMentionsProps },
@@ -40,29 +35,22 @@ API.v1.addRoute(
 				return API.v1.unauthorized();
 			}
 
-			let ridFilter: { rid?: { $in: string[] } } = {};
+			let rids: string[] | undefined;
 			if (roomType) {
-				ridFilter = { rid: { $in: await getRoomIdsByType(this.userId, roomType as RoomType) } };
+				rids = await getRoomIdsByType(this.userId, roomType as RoomType);
 			} else if (unread === true) {
 				const subs = await Subscriptions.find(
 					{ 'u._id': this.userId, $or: [{ userMentions: { $gt: 0 } }, { groupMentions: { $gt: 0 } }] },
 					{ projection: { rid: 1 } },
 				).toArray();
-				ridFilter = { rid: { $in: subs.map((s) => s.rid) } };
+				rids = subs.map((s) => s.rid);
 			}
 
-			const { cursor, totalCount } = Messages.findPaginated(
-				{
-					'_hidden': { $ne: true },
-					'mentions.username': user.username,
-					...ridFilter,
-				},
-				{
-					sort: sort || { ts: -1 },
-					skip: offset,
-					limit: count,
-				},
-			);
+			const { cursor, totalCount } = Messages.findPaginatedVisibleByMention(user.username, rids, {
+				sort: sort || { ts: -1 },
+				skip: offset,
+				limit: count,
+			});
 
 			const [messages, total] = await Promise.all([cursor.toArray(), totalCount]);
 
@@ -85,20 +73,13 @@ API.v1.addRoute(
 			const { offset, count } = await getPaginationItems(this.queryParams);
 			const { roomType } = this.queryParams;
 
-			const ridFilter = roomType ? { rid: { $in: await getRoomIdsByType(this.userId, roomType as RoomType) } } : {};
+			const rids = roomType ? await getRoomIdsByType(this.userId, roomType as RoomType) : undefined;
 
-			const { cursor, totalCount } = Messages.findPaginated(
-				{
-					'_hidden': { $ne: true },
-					'starred._id': this.userId,
-					...ridFilter,
-				},
-				{
-					sort: sort || { ts: -1 },
-					skip: offset,
-					limit: count,
-				},
-			);
+			const { cursor, totalCount } = Messages.findPaginatedStarredByUser(this.userId, rids, {
+				sort: sort || { ts: -1 },
+				skip: offset,
+				limit: count,
+			});
 
 			const [messages, total] = await Promise.all([cursor.toArray(), totalCount]);
 
@@ -121,35 +102,22 @@ API.v1.addRoute(
 			const { offset, count } = await getPaginationItems(this.queryParams);
 			const { roomType, unread } = this.queryParams;
 
-			let ridFilter: { rid?: { $in: string[] } } = {};
-			if (roomType) {
-				ridFilter = { rid: { $in: await getRoomIdsByType(this.userId, roomType as RoomType) } };
-			}
+			const rids = roomType ? await getRoomIdsByType(this.userId, roomType as RoomType) : undefined;
 
-			let threadIdFilter: { _id?: { $in: string[] } } = {};
+			let threadIds: string[] | undefined;
 			if (unread === true) {
 				const subs = await Subscriptions.find(
 					{ 'u._id': this.userId, tunread: { $exists: true, $not: { $size: 0 } } },
 					{ projection: { tunread: 1 } },
 				).toArray();
-				const unreadThreadIds = subs.flatMap((s) => s.tunread ?? []);
-				threadIdFilter = { _id: { $in: unreadThreadIds } };
+				threadIds = subs.flatMap((s) => s.tunread ?? []);
 			}
 
-			const { cursor, totalCount } = Messages.findPaginated(
-				{
-					'_hidden': { $ne: true },
-					'replies': this.userId,
-					'tcount': { $exists: true },
-					...ridFilter,
-					...threadIdFilter,
-				},
-				{
-					sort: sort || { tlm: -1 },
-					skip: offset,
-					limit: count,
-				},
-			);
+			const { cursor, totalCount } = Messages.findPaginatedThreadsByUser(this.userId, threadIds, rids, {
+				sort: sort || { tlm: -1 },
+				skip: offset,
+				limit: count,
+			});
 
 			const [messages, total] = await Promise.all([cursor.toArray(), totalCount]);
 
@@ -172,21 +140,13 @@ API.v1.addRoute(
 			const { offset, count } = await getPaginationItems(this.queryParams);
 			const { roomType } = this.queryParams;
 
-			const ridFilter = roomType ? { rid: { $in: await getRoomIdsByType(this.userId, roomType as RoomType) } } : {};
+			const rids = roomType ? await getRoomIdsByType(this.userId, roomType as RoomType) : undefined;
 
-			const { cursor, totalCount } = Messages.findPaginated(
-				{
-					'_hidden': { $ne: true },
-					'u._id': this.userId,
-					'reactions': { $exists: true, $ne: {} },
-					...ridFilter,
-				},
-				{
-					sort: sort || { ts: -1 },
-					skip: offset,
-					limit: count,
-				},
-			);
+			const { cursor, totalCount } = Messages.findPaginatedReactionsByUser(this.userId, rids, {
+				sort: sort || { ts: -1 },
+				skip: offset,
+				limit: count,
+			});
 
 			const [messages, total] = await Promise.all([cursor.toArray(), totalCount]);
 
@@ -244,11 +204,11 @@ API.v1.addRoute(
 				return API.v1.unauthorized();
 			}
 
-			const ridFilter = roomType ? { rid: { $in: await getRoomIdsByType(this.userId, roomType as RoomType) } } : {};
+			const rids = roomType ? await getRoomIdsByType(this.userId, roomType as RoomType) : undefined;
 
-			// Get unread room data for filtering
-			let unreadMentionRids: Set<string> | null = null;
-			let unreadThreadIds: Set<string> | null = null;
+			// Resolve unread room/thread sets for filtering
+			let unreadMentionRids: string[] | undefined;
+			let unreadThreadIds: string[] | undefined;
 			if (unread === true) {
 				const [mentionSubs, threadSubs] = await Promise.all([
 					Subscriptions.find(
@@ -260,51 +220,38 @@ API.v1.addRoute(
 						{ projection: { tunread: 1 } },
 					).toArray(),
 				]);
-				unreadMentionRids = new Set(mentionSubs.map((s) => s.rid));
-				unreadThreadIds = new Set(threadSubs.flatMap((s) => s.tunread ?? []));
+				unreadMentionRids = mentionSubs.map((s) => s.rid);
+				unreadThreadIds = threadSubs.flatMap((s) => s.tunread ?? []);
 			}
 
-			const mentionFilter = {
-				'_hidden': { $ne: true },
-				'mentions.username': user.username,
-				...(unreadMentionRids ? { rid: { $in: [...unreadMentionRids] } } : ridFilter),
-			};
-
-			const threadFilter = {
-				'_hidden': { $ne: true },
-				'replies': this.userId,
-				'tcount': { $exists: true },
-				...(unreadThreadIds ? { _id: { $in: [...unreadThreadIds] } } : ridFilter),
-			};
-
-			const reactionFilter = {
-				'_hidden': { $ne: true },
-				'u._id': this.userId,
-				'reactions': { $exists: true, $ne: {} },
-				...ridFilter,
-			};
-
-			const starFilter = {
-				'_hidden': { $ne: true },
-				'starred._id': this.userId,
-				...ridFilter,
-			};
-
-			// Fetch all activity types in parallel, merge server-side, then slice for pagination.
+			// Fetch all activity types in parallel, merge in-memory, then slice for pagination.
 			// fetchLimit is capped at 500 to prevent unbounded memory usage on deep pagination.
-			// TODO(gsoc): replace with DB-level aggregation pipeline for scalable cursor-based pagination.
+			// TODO(gsoc): replace with a DB-level $unionWith aggregation pipeline for scalable cursor-based pagination.
 			const fetchLimit = Math.min((count || 50) + (offset || 0) + 50, 500);
+
 			const [mentionDocs, threadDocs, reactionDocs, starredDocs, invitationDocs] = await Promise.all([
-				Messages.find(mentionFilter, { sort: { ts: -1 }, limit: fetchLimit }).toArray(),
-				Messages.find(threadFilter, { sort: { tlm: -1 }, limit: fetchLimit }).toArray(),
-				Messages.find(reactionFilter, { sort: { ts: -1 }, limit: fetchLimit }).toArray(),
-				Messages.find(starFilter, { sort: { ts: -1 }, limit: fetchLimit }).toArray(),
+				Messages.findPaginatedVisibleByMention(user.username, unreadMentionRids ?? rids, {
+					sort: { ts: -1 },
+					limit: fetchLimit,
+				}).cursor.toArray(),
+				Messages.findPaginatedThreadsByUser(this.userId, unreadThreadIds, rids, {
+					sort: { tlm: -1 },
+					limit: fetchLimit,
+				}).cursor.toArray(),
+				Messages.findPaginatedReactionsByUser(this.userId, rids, {
+					sort: { ts: -1 },
+					limit: fetchLimit,
+				}).cursor.toArray(),
+				Messages.findPaginatedStarredByUser(this.userId, rids, {
+					sort: { ts: -1 },
+					limit: fetchLimit,
+				}).cursor.toArray(),
 				unread !== true
 					? Subscriptions.find({ 'u._id': this.userId, 'status': 'INVITED' }, { sort: { ts: -1 }, limit: fetchLimit }).toArray()
 					: Promise.resolve([]),
 			]);
 
-			// Build room name cache
+			// Build a room name/type cache from a single batched query
 			const allRids = new Set([
 				...mentionDocs.map((m) => m.rid),
 				...threadDocs.map((m) => m.rid),
@@ -318,9 +265,8 @@ API.v1.addRoute(
 
 			const getRoom = (rid: string) => roomMap.get(rid);
 
-			// Normalize to ActivityItem
+			// Normalize each activity type to a unified ActivityItem shape
 			const items: ActivityItem[] = [];
-
 			const seenMessages = new Set<string>();
 
 			const addMessageItem = (type: ActivityType, doc: (typeof mentionDocs)[number], ts: Date) => {
@@ -366,7 +312,7 @@ API.v1.addRoute(
 				});
 			}
 
-			// Sort all by ts descending
+			// Sort unified feed by timestamp descending
 			items.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
 
 			const total = items.length;

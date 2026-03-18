@@ -33,7 +33,7 @@ const ReactionsTab = ({ roomType, onSelectMessage, selectedMessageId }: Reaction
 		);
 	}
 
-	const messages: IMessage[] = reactionsQuery.data ?? [];
+	const messages: IMessage[] = reactionsQuery.data?.messages ?? [];
 
 	if (messages.length === 0) {
 		return (
@@ -50,6 +50,11 @@ const ReactionsTab = ({ roomType, onSelectMessage, selectedMessageId }: Reaction
 			activityType='reaction'
 			onSelectMessage={onSelectMessage}
 			selectedMessageId={selectedMessageId}
+			onEndReached={() => {
+				if (reactionsQuery.hasNextPage && !reactionsQuery.isFetchingNextPage) {
+					void reactionsQuery.fetchNextPage();
+				}
+			}}
 		/>
 	);
 };

@@ -17,6 +17,35 @@ export type ActivityItem = {
 	unread: boolean;
 };
 
+const ROOM_TYPE_ENUM = ['c', 'd', 'p', 'l'] as const;
+
+const paginationProperties = {
+	count: { type: 'number', nullable: true },
+	offset: { type: 'number', nullable: true },
+	sort: { type: 'string', nullable: true },
+} as const;
+
+const roomTypeProperty = {
+	roomType: { type: 'string', enum: ROOM_TYPE_ENUM, nullable: true },
+} as const;
+
+const unreadProperty = {
+	unread: { type: 'boolean', nullable: true },
+} as const;
+
+// Base properties shared by endpoints that support roomType + unread filtering
+const baseFilterProperties = {
+	...paginationProperties,
+	...roomTypeProperty,
+	...unreadProperty,
+};
+
+// Base properties for endpoints that support roomType filtering but not unread
+const roomTypeFilterProperties = {
+	...paginationProperties,
+	...roomTypeProperty,
+};
+
 type ActivityHubBaseParams = {
 	count?: number;
 	offset?: number;
@@ -25,29 +54,28 @@ type ActivityHubBaseParams = {
 	unread?: boolean;
 };
 
-const baseProperties = {
-	count: { type: 'number', nullable: true },
-	offset: { type: 'number', nullable: true },
-	sort: { type: 'string', nullable: true },
-	roomType: { type: 'string', enum: ['c', 'd', 'p', 'l'], nullable: true },
-	unread: { type: 'boolean', nullable: true },
+type ActivityHubRoomTypeParams = {
+	count?: number;
+	offset?: number;
+	sort?: string;
+	roomType?: RoomType;
 };
 
 type ActivityHubMentionsParams = ActivityHubBaseParams;
 
 const ActivityHubMentionsSchema = {
 	type: 'object',
-	properties: baseProperties,
+	properties: baseFilterProperties,
 	additionalProperties: false,
 };
 
 export const isActivityHubMentionsProps = ajv.compile<ActivityHubMentionsParams>(ActivityHubMentionsSchema);
 
-type ActivityHubStarredMessagesParams = ActivityHubBaseParams;
+type ActivityHubStarredMessagesParams = ActivityHubRoomTypeParams;
 
 const ActivityHubStarredMessagesSchema = {
 	type: 'object',
-	properties: baseProperties,
+	properties: roomTypeFilterProperties,
 	additionalProperties: false,
 };
 
@@ -57,17 +85,17 @@ type ActivityHubThreadsParams = ActivityHubBaseParams;
 
 const ActivityHubThreadsSchema = {
 	type: 'object',
-	properties: baseProperties,
+	properties: baseFilterProperties,
 	additionalProperties: false,
 };
 
 export const isActivityHubThreadsProps = ajv.compile<ActivityHubThreadsParams>(ActivityHubThreadsSchema);
 
-type ActivityHubReactionsParams = ActivityHubBaseParams;
+type ActivityHubReactionsParams = ActivityHubRoomTypeParams;
 
 const ActivityHubReactionsSchema = {
 	type: 'object',
-	properties: baseProperties,
+	properties: roomTypeFilterProperties,
 	additionalProperties: false,
 };
 
@@ -81,11 +109,7 @@ type ActivityHubInvitationsParams = {
 
 const ActivityHubInvitationsSchema = {
 	type: 'object',
-	properties: {
-		count: { type: 'number', nullable: true },
-		offset: { type: 'number', nullable: true },
-		sort: { type: 'string', nullable: true },
-	},
+	properties: paginationProperties,
 	additionalProperties: false,
 };
 
@@ -103,8 +127,8 @@ const ActivityHubActivitiesSchema = {
 	properties: {
 		count: { type: 'number', nullable: true },
 		offset: { type: 'number', nullable: true },
-		roomType: { type: 'string', enum: ['c', 'd', 'p', 'l'], nullable: true },
-		unread: { type: 'boolean', nullable: true },
+		...roomTypeProperty,
+		...unreadProperty,
 	},
 	additionalProperties: false,
 };

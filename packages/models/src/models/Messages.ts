@@ -63,7 +63,12 @@ export class MessagesRaw extends BaseRaw<IMessage> implements IMessagesModel {
 			{ key: { rid: 1, unread: 1, ts: 1, tmid: 1, tshow: 1 }, partialFilterExpression: { unread: { $exists: true } } },
 			{ key: { 'pinnedBy._id': 1 }, sparse: true },
 			{ key: { 'starred._id': 1 }, sparse: true },
-			{ key: { 'u._id': 1, 'reactions': 1 }, sparse: true }, // used for Activity Hub reactions-by-user queries
+			// Activity Hub: reactions-by-user — partial filter avoids indexing messages without reactions
+		{
+			key: { 'u._id': 1 },
+			partialFilterExpression: { reactions: { $exists: true } },
+			name: 'activity_hub_reactions_by_user',
+		},
 
 			// discussions
 			{ key: { drid: 1 }, sparse: true },
@@ -121,19 +126,61 @@ export class MessagesRaw extends BaseRaw<IMessage> implements IMessagesModel {
 		return this.findPaginated(query, options);
 	}
 
-	findPaginatedStarredByUser(userId: IUser['_id'], options?: FindOptions<IMessage>): FindPaginated<FindCursor<IMessage>> {
+	findPaginatedStarredByUser(
+		userId: IUser['_id'],
+		rids?: IRoom['_id'][],
+		options?: FindOptions<IMessage>,
+	): FindPaginated<FindCursor<IMessage>> {
 		const query: Filter<IMessage> = {
 			'_hidden': { $ne: true },
 			'starred._id': userId,
+			...(rids ? { rid: { $in: rids } } : {}),
 		};
 
 		return this.findPaginated(query, options);
 	}
 
-	findPaginatedVisibleByMention(username: IUser['username'], options?: FindOptions<IMessage>): FindPaginated<FindCursor<IMessage>> {
+	findPaginatedVisibleByMention(
+		username: IUser['username'],
+		rids?: IRoom['_id'][],
+		options?: FindOptions<IMessage>,
+	): FindPaginated<FindCursor<IMessage>> {
 		const query: Filter<IMessage> = {
 			'_hidden': { $ne: true },
 			'mentions.username': username,
+			...(rids ? { rid: { $in: rids } } : {}),
+		};
+
+		return this.findPaginated(query, options);
+	}
+
+	findPaginatedThreadsByUser(
+		userId: IUser['_id'],
+		threadIds?: IMessage['_id'][],
+		rids?: IRoom['_id'][],
+		options?: FindOptions<IMessage>,
+	): FindPaginated<FindCursor<IMessage>> {
+		const query: Filter<IMessage> = {
+			'_hidden': { $ne: true },
+			'replies': userId,
+			'tcount': { $exists: true },
+			...(threadIds ? { _id: { $in: threadIds } } : {}),
+			...(rids ? { rid: { $in: rids } } : {}),
+		};
+
+		return this.findPaginated(query, options);
+	}
+
+	findPaginatedReactionsByUser(
+		userId: IUser['_id'],
+		rids?: IRoom['_id'][],
+		options?: FindOptions<IMessage>,
+	): FindPaginated<FindCursor<IMessage>> {
+		const query: Filter<IMessage> = {
+			'_hidden': { $ne: true },
+			'u._id': userId,
+			'reactions': { $exists: true, $ne: {} },
+			...(rids ? { rid: { $in: rids } } : {}),
 		};
 
 		return this.findPaginated(query, options);

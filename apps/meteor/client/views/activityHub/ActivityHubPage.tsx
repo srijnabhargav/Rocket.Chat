@@ -26,6 +26,8 @@ type SelectedItem =
 	| { kind: 'activity'; activity: ActivityItem }
 	| null;
 
+const VALID_TABS: TabName[] = ['all', 'mentions', 'threads', 'reactions', 'starred', 'invitations'];
+
 const ActivityHubPage = (): ReactElement => {
 	const { t } = useTranslation();
 	const tab = useRouteParameter('tab') as TabName | undefined;
@@ -61,20 +63,19 @@ const ActivityHubPage = (): ReactElement => {
 					return;
 				}
 
-				const { tab } = router.getRouteParameters();
+				const { tab: currentTab } = router.getRouteParameters();
 
-				if (!tab) {
+				if (!currentTab || !VALID_TABS.includes(currentTab as TabName)) {
 					router.navigate('/activity-hub/all', { replace: true });
 				}
 			}),
 		[router],
 	);
 
-	// Clear preview when switching tabs
 	const handleTabClick = useCallback(
-		(tab: TabName) => () => {
+		(nextTab: TabName) => () => {
 			setSelected(null);
-			router.navigate(`/activity-hub/${tab}`);
+			router.navigate(`/activity-hub/${nextTab}`);
 		},
 		[router],
 	);
@@ -94,18 +95,23 @@ const ActivityHubPage = (): ReactElement => {
 	const selectedMessageId = selected?.kind === 'message' ? selected.message._id : undefined;
 	const selectedActivityId = selected?.kind === 'activity' ? selected.activity._id : undefined;
 
-	// Derive IMessage for the preview panel
+	// For ActivityItem selections, use the msgId to fetch the full message in the preview panel.
+	// We pass a minimal IMessage stub so the panel can immediately render the message ID and
+	// room context while it fetches the full message body via its own query.
 	const previewMessage: IMessage | null = (() => {
 		if (!selected) return null;
 		if (selected.kind === 'message') return selected.message;
-		// For unified ActivityItem, reconstruct a minimal IMessage-like object if msgId is present
 		if (selected.kind === 'activity' && selected.activity.msgId) {
 			return {
 				_id: selected.activity.msgId,
 				rid: selected.activity.rid,
 				msg: selected.activity.msg ?? '',
 				ts: new Date(selected.activity.ts),
-				u: selected.activity.actor as IMessage['u'],
+				u: {
+					_id: selected.activity.actor._id,
+					username: selected.activity.actor.username,
+					name: selected.activity.actor.name,
+				},
 				_updatedAt: new Date(selected.activity.ts),
 			} as IMessage;
 		}
@@ -116,7 +122,6 @@ const ActivityHubPage = (): ReactElement => {
 
 	return (
 		<Page background='room'>
-			{/* Header: title + controls */}
 			<PageHeader title={t('Activity_Hub')}>
 				<Button
 					small
@@ -129,7 +134,6 @@ const ActivityHubPage = (): ReactElement => {
 				<IconButton icon='cross' title={t('Close')} onClick={handleClose} small />
 			</PageHeader>
 
-			{/* Controls row: tabs + unread toggle + channel filter */}
 			<Box
 				display='flex'
 				alignItems='center'
@@ -161,9 +165,9 @@ const ActivityHubPage = (): ReactElement => {
 					</Tabs.Item>
 				</Tabs>
 
-				<Box display='flex' alignItems='center' style={{ gap: '12px' }}>
+				<Box display='flex' alignItems='center' rcx-box--animated gap={12}>
 					{!isInvitationsTab && (
-						<Box display='flex' alignItems='center' style={{ gap: '6px' }}>
+						<Box display='flex' alignItems='center' gap={6}>
 							<ToggleSwitch
 								id='activity-hub-unread-toggle'
 								checked={unread}
@@ -174,7 +178,6 @@ const ActivityHubPage = (): ReactElement => {
 								htmlFor='activity-hub-unread-toggle'
 								fontScale='p2'
 								color='default'
-								style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}
 							>
 								{t('Unread_messages')}
 							</Box>
@@ -190,9 +193,7 @@ const ActivityHubPage = (): ReactElement => {
 				</Box>
 			</Box>
 
-			{/* Two-column body */}
 			<Box display='flex' flexGrow={1} overflow='hidden'>
-				{/* Left panel: activity feed */}
 				<Box
 					display='flex'
 					flexDirection='column'
@@ -200,7 +201,7 @@ const ActivityHubPage = (): ReactElement => {
 					overflow='hidden'
 					borderInlineEnd='1px solid'
 					borderColor='stroke-extra-light'
-					style={{ width: '420px' }}
+					width='x420'
 				>
 					{tab === 'all' && (
 						<AllTab
@@ -243,7 +244,6 @@ const ActivityHubPage = (): ReactElement => {
 					{tab === 'invitations' && <InvitationsTab />}
 				</Box>
 
-				{/* Right panel: conversation preview */}
 				<Box display='flex' flexDirection='column' flexGrow={1} overflow='hidden'>
 					{!isInvitationsTab && <ActivityPreviewPanel message={previewMessage} />}
 					{isInvitationsTab && (

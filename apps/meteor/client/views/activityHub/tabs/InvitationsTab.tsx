@@ -1,6 +1,8 @@
 import type { ISubscription } from '@rocket.chat/core-typings';
 import { States, StatesIcon, StatesTitle, StatesSubtitle, Box, Throbber } from '@rocket.chat/fuselage';
+import { VirtualizedScrollbars } from '@rocket.chat/ui-client';
 import { useTranslation } from 'react-i18next';
+import { Virtuoso } from 'react-virtuoso';
 
 import InvitationItem from '../components/InvitationItem';
 import { useActivityHubInvitations } from '../hooks/useActivityHubInvitations';
@@ -27,7 +29,7 @@ const InvitationsTab = () => {
 		);
 	}
 
-	const invitations: ISubscription[] = invitationsQuery.data ?? [];
+	const invitations: ISubscription[] = invitationsQuery.data?.invitations ?? [];
 
 	if (invitations.length === 0) {
 		return (
@@ -39,10 +41,20 @@ const InvitationsTab = () => {
 	}
 
 	return (
-		<Box display='flex' flexDirection='column' flexGrow={1} overflow='auto'>
-			{invitations.map((inv) => (
-				<InvitationItem key={inv._id} subscription={inv} />
-			))}
+		<Box is='section' display='flex' flexDirection='column' flexGrow={1} flexShrink={1} flexBasis='auto' height='full'>
+			<VirtualizedScrollbars>
+				<Virtuoso
+					totalCount={invitations.length}
+					overscan={25}
+					data={invitations}
+					endReached={() => {
+						if (invitationsQuery.hasNextPage && !invitationsQuery.isFetchingNextPage) {
+							void invitationsQuery.fetchNextPage();
+						}
+					}}
+					itemContent={(_index, inv) => <InvitationItem key={inv._id} subscription={inv} />}
+				/>
+			</VirtualizedScrollbars>
 		</Box>
 	);
 };
