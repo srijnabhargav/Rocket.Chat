@@ -1,22 +1,13 @@
 import type { ISubscription } from '@rocket.chat/core-typings';
 import { States, StatesIcon, StatesTitle, StatesSubtitle, Box, Throbber } from '@rocket.chat/fuselage';
-import { useEndpoint } from '@rocket.chat/ui-contexts';
-import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
 import InvitationItem from '../components/InvitationItem';
+import { useActivityHubInvitations } from '../hooks/useActivityHubInvitations';
 
 const InvitationsTab = () => {
 	const { t } = useTranslation();
-	const getInvitations = useEndpoint('GET', '/v1/activity-hub.invitations');
-
-	const invitationsQuery = useQuery({
-		queryKey: ['activity-hub', 'invitations'],
-		queryFn: async () => {
-			const result = await getInvitations({ count: 50, offset: 0 });
-			return result.invitations as ISubscription[];
-		},
-	});
+	const invitationsQuery = useActivityHubInvitations();
 
 	if (invitationsQuery.isLoading) {
 		return (

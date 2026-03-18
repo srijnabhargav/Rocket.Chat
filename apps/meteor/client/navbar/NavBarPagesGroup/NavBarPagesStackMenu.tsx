@@ -21,7 +21,7 @@ const NavBarPagesStackMenu = (props: NavBarPagesStackMenuProps) => {
 	});
 
 	const currentRoute = useCurrentRoutePath();
-	const pressed = currentRoute?.includes('/directory') || currentRoute?.includes('/home');
+	const pressed = currentRoute?.includes('/directory') || currentRoute?.includes('/home') || currentRoute?.includes('/activity-hub');
 
 	const items = [
 		showHome && {
@@ -35,6 +35,12 @@ const NavBarPagesStackMenu = (props: NavBarPagesStackMenuProps) => {
 			icon: 'notebook-hashtag',
 			content: t('Directory'),
 			onClick: () => router.navigate('/directory'),
+		},
+		{
+			id: 'activity-hub',
+			icon: 'clock',
+			content: t('Activity_Hub'),
+			onClick: () => router.navigate('/activity-hub'),
 		},
 	].filter(Boolean) as GenericMenuItemProps[];
 

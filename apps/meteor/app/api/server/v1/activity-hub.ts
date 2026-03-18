@@ -43,7 +43,7 @@ API.v1.addRoute(
 			let ridFilter: { rid?: { $in: string[] } } = {};
 			if (roomType) {
 				ridFilter = { rid: { $in: await getRoomIdsByType(this.userId, roomType as RoomType) } };
-			} else if (unread === 'true') {
+			} else if (unread === true) {
 				const subs = await Subscriptions.find(
 					{ 'u._id': this.userId, $or: [{ userMentions: { $gt: 0 } }, { groupMentions: { $gt: 0 } }] },
 					{ projection: { rid: 1 } },
@@ -127,7 +127,7 @@ API.v1.addRoute(
 			}
 
 			let threadIdFilter: { _id?: { $in: string[] } } = {};
-			if (unread === 'true') {
+			if (unread === true) {
 				const subs = await Subscriptions.find(
 					{ 'u._id': this.userId, tunread: { $exists: true, $not: { $size: 0 } } },
 					{ projection: { tunread: 1 } },
@@ -178,7 +178,7 @@ API.v1.addRoute(
 				{
 					'_hidden': { $ne: true },
 					'u._id': this.userId,
-					'reactions': { $exists: true },
+					'reactions': { $exists: true, $ne: {} },
 					...ridFilter,
 				},
 				{
@@ -190,12 +190,9 @@ API.v1.addRoute(
 
 			const [messages, total] = await Promise.all([cursor.toArray(), totalCount]);
 
-			// Only return messages that actually have at least one reaction
-			const messagesWithReactions = messages.filter((m) => m.reactions && Object.keys(m.reactions).length > 0);
-
 			return API.v1.success({
-				messages: await normalizeMessagesForUser(messagesWithReactions, this.userId),
-				count: messagesWithReactions.length,
+				messages: await normalizeMessagesForUser(messages, this.userId),
+				count: messages.length,
 				offset,
 				total,
 			});
@@ -252,7 +249,7 @@ API.v1.addRoute(
 			// Get unread room data for filtering
 			let unreadMentionRids: Set<string> | null = null;
 			let unreadThreadIds: Set<string> | null = null;
-			if (unread === 'true') {
+			if (unread === true) {
 				const [mentionSubs, threadSubs] = await Promise.all([
 					Subscriptions.find(
 						{ 'u._id': this.userId, $or: [{ userMentions: { $gt: 0 } }, { groupMentions: { $gt: 0 } }] },
@@ -283,7 +280,7 @@ API.v1.addRoute(
 			const reactionFilter = {
 				'_hidden': { $ne: true },
 				'u._id': this.userId,
-				'reactions': { $exists: true },
+				'reactions': { $exists: true, $ne: {} },
 				...ridFilter,
 			};
 
@@ -293,14 +290,16 @@ API.v1.addRoute(
 				...ridFilter,
 			};
 
-			// Fetch all activity types in parallel (large limit to merge, then re-paginate)
-			const fetchLimit = (count || 50) + (offset || 0) + 50;
+			// Fetch all activity types in parallel, merge server-side, then slice for pagination.
+			// fetchLimit is capped at 500 to prevent unbounded memory usage on deep pagination.
+			// TODO(gsoc): replace with DB-level aggregation pipeline for scalable cursor-based pagination.
+			const fetchLimit = Math.min((count || 50) + (offset || 0) + 50, 500);
 			const [mentionDocs, threadDocs, reactionDocs, starredDocs, invitationDocs] = await Promise.all([
 				Messages.find(mentionFilter, { sort: { ts: -1 }, limit: fetchLimit }).toArray(),
 				Messages.find(threadFilter, { sort: { tlm: -1 }, limit: fetchLimit }).toArray(),
 				Messages.find(reactionFilter, { sort: { ts: -1 }, limit: fetchLimit }).toArray(),
 				Messages.find(starFilter, { sort: { ts: -1 }, limit: fetchLimit }).toArray(),
-				unread !== 'true'
+				unread !== true
 					? Subscriptions.find({ 'u._id': this.userId, 'status': 'INVITED' }, { sort: { ts: -1 }, limit: fetchLimit }).toArray()
 					: Promise.resolve([]),
 			]);
@@ -345,7 +344,7 @@ API.v1.addRoute(
 
 			for (const doc of mentionDocs) addMessageItem('mention', doc, doc.ts);
 			for (const doc of threadDocs) addMessageItem('thread', doc, doc.tlm || doc.ts);
-			for (const doc of reactionDocs.filter((m) => m.reactions && Object.keys(m.reactions).length > 0)) addMessageItem('reaction', doc, doc.ts);
+			for (const doc of reactionDocs) addMessageItem('reaction', doc, doc.ts);
 			for (const doc of starredDocs) addMessageItem('star', doc, doc.ts);
 
 			for (const inv of invitationDocs) {

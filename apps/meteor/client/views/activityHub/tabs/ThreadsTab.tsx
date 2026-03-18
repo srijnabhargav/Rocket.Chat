@@ -1,11 +1,9 @@
 import type { IMessage, RoomType } from '@rocket.chat/core-typings';
 import { States, StatesIcon, StatesTitle, StatesSubtitle, Box, Throbber } from '@rocket.chat/fuselage';
-import { useEndpoint } from '@rocket.chat/ui-contexts';
-import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
-import { mapMessageFromApi } from '../../../lib/utils/mapMessageFromApi';
 import ActivityMessageList from '../components/ActivityMessageList';
+import { useActivityHubThreads } from '../hooks/useActivityHubThreads';
 
 type ThreadsTabProps = {
 	roomType: 'all' | RoomType;
@@ -16,22 +14,7 @@ type ThreadsTabProps = {
 
 const ThreadsTab = ({ roomType, unread, onSelectMessage, selectedMessageId }: ThreadsTabProps) => {
 	const { t } = useTranslation();
-	const getThreads = useEndpoint('GET', '/v1/activity-hub.threads');
-
-	const threadsQuery = useQuery({
-		queryKey: ['activity-hub', 'threads', roomType, unread],
-		queryFn: async () => {
-			const params: { count: number; offset: number; roomType?: RoomType; unread?: boolean } = { count: 50, offset: 0 };
-			if (roomType !== 'all') {
-				params.roomType = roomType;
-			}
-			if (unread) {
-				params.unread = true;
-			}
-			const result = await getThreads(params);
-			return result.messages.map(mapMessageFromApi);
-		},
-	});
+	const threadsQuery = useActivityHubThreads({ roomType, unread });
 
 	if (threadsQuery.isLoading) {
 		return (

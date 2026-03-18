@@ -1,11 +1,9 @@
 import type { IMessage, RoomType } from '@rocket.chat/core-typings';
 import { States, StatesIcon, StatesTitle, StatesSubtitle, Box, Throbber } from '@rocket.chat/fuselage';
-import { useEndpoint } from '@rocket.chat/ui-contexts';
-import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
-import { mapMessageFromApi } from '../../../lib/utils/mapMessageFromApi';
 import ActivityMessageList from '../components/ActivityMessageList';
+import { useActivityHubStarred } from '../hooks/useActivityHubStarred';
 
 type StarredMessagesTabProps = {
 	roomType: 'all' | RoomType;
@@ -15,19 +13,7 @@ type StarredMessagesTabProps = {
 
 const StarredMessagesTab = ({ roomType, onSelectMessage, selectedMessageId }: StarredMessagesTabProps) => {
 	const { t } = useTranslation();
-	const getStarredMessages = useEndpoint('GET', '/v1/activity-hub.starred-messages');
-
-	const starredQuery = useQuery({
-		queryKey: ['activity-hub', 'starred-messages', roomType],
-		queryFn: async () => {
-			const params: { count: number; offset: number; roomType?: RoomType } = { count: 100, offset: 0 };
-			if (roomType !== 'all') {
-				params.roomType = roomType;
-			}
-			const result = await getStarredMessages(params);
-			return result.messages.map(mapMessageFromApi);
-		},
-	});
+	const starredQuery = useActivityHubStarred({ roomType });
 
 	if (starredQuery.isLoading) {
 		return (

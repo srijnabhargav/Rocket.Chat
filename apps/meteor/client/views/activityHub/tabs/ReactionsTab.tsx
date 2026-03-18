@@ -1,11 +1,9 @@
 import type { IMessage, RoomType } from '@rocket.chat/core-typings';
 import { States, StatesIcon, StatesTitle, StatesSubtitle, Box, Throbber } from '@rocket.chat/fuselage';
-import { useEndpoint } from '@rocket.chat/ui-contexts';
-import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
-import { mapMessageFromApi } from '../../../lib/utils/mapMessageFromApi';
 import ActivityMessageList from '../components/ActivityMessageList';
+import { useActivityHubReactions } from '../hooks/useActivityHubReactions';
 
 type ReactionsTabProps = {
 	roomType: 'all' | RoomType;
@@ -15,19 +13,7 @@ type ReactionsTabProps = {
 
 const ReactionsTab = ({ roomType, onSelectMessage, selectedMessageId }: ReactionsTabProps) => {
 	const { t } = useTranslation();
-	const getReactions = useEndpoint('GET', '/v1/activity-hub.reactions');
-
-	const reactionsQuery = useQuery({
-		queryKey: ['activity-hub', 'reactions', roomType],
-		queryFn: async () => {
-			const params: { count: number; offset: number; roomType?: RoomType } = { count: 50, offset: 0 };
-			if (roomType !== 'all') {
-				params.roomType = roomType;
-			}
-			const result = await getReactions(params);
-			return result.messages.map(mapMessageFromApi);
-		},
-	});
+	const reactionsQuery = useActivityHubReactions({ roomType });
 
 	if (reactionsQuery.isLoading) {
 		return (

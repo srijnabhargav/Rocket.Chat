@@ -9,6 +9,7 @@ import {
 import { MessageAvatar } from '@rocket.chat/ui-avatar';
 import { VirtualizedScrollbars } from '@rocket.chat/ui-client';
 import { useUserPreference, useUserSubscription } from '@rocket.chat/ui-contexts';
+import type { KeyboardEvent } from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Virtuoso } from 'react-virtuoso';
@@ -104,7 +105,16 @@ const ActivityCard = ({
 			borderInlineStart={isSelected ? '2px solid' : '2px solid transparent'}
 			borderColor={isSelected ? 'button-background-primary-default' : 'transparent'}
 			style={{ cursor: 'pointer' }}
+			role='button'
+			tabIndex={0}
+			aria-pressed={isSelected}
 			onClick={onSelect}
+			onKeyDown={(e: KeyboardEvent<HTMLElement>) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					onSelect();
+				}
+			}}
 			className='activity-card'
 		>
 			{/* Description line: icon + actor description + timestamp */}
@@ -227,16 +237,25 @@ const GroupRow = ({
 					</Bubble>
 				</MessageDivider>
 			)}
-			{/* Group header */}
-			<Box
-				display='flex'
-				alignItems='center'
-				paddingInline={16}
-				paddingBlock={8}
-				bg='surface-tint'
-				style={{ cursor: 'pointer', gap: '8px' }}
-				onClick={() => setExpanded((v) => !v)}
-			>
+		{/* Group header */}
+		<Box
+			display='flex'
+			alignItems='center'
+			paddingInline={16}
+			paddingBlock={8}
+			bg='surface-tint'
+			style={{ cursor: 'pointer', gap: '8px' }}
+			role='button'
+			tabIndex={0}
+			aria-expanded={expanded}
+			onClick={() => setExpanded((v) => !v)}
+			onKeyDown={(e: KeyboardEvent<HTMLElement>) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					setExpanded((v) => !v);
+				}
+			}}
+		>
 				<Icon name='hashtag' size='x14' color='secondary-info' />
 				<Box fontScale='p2m' color='default' flexGrow={1}>
 					{roomName}

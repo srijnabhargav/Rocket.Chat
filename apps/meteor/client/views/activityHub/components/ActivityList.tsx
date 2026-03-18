@@ -9,6 +9,7 @@ import {
 import { MessageAvatar } from '@rocket.chat/ui-avatar';
 import { VirtualizedScrollbars } from '@rocket.chat/ui-client';
 import { useUserPreference } from '@rocket.chat/ui-contexts';
+import type { KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Virtuoso } from 'react-virtuoso';
 
@@ -78,7 +79,16 @@ const ActivityCard = ({ activity, formatTime, showUserAvatar, isSelected, onSele
 			borderInlineStart={isSelected ? '2px solid' : '2px solid transparent'}
 			borderColor={isSelected ? 'button-background-primary-default' : 'transparent'}
 			style={{ cursor: activity.msgId ? 'pointer' : 'default' }}
+			role='button'
+			tabIndex={0}
+			aria-pressed={isSelected}
 			onClick={onSelect}
+			onKeyDown={(e: KeyboardEvent<HTMLElement>) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					onSelect();
+				}
+			}}
 			className='activity-card'
 		>
 			{/* Description line + timestamp */}

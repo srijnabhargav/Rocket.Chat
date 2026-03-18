@@ -63,6 +63,7 @@ export class MessagesRaw extends BaseRaw<IMessage> implements IMessagesModel {
 			{ key: { rid: 1, unread: 1, ts: 1, tmid: 1, tshow: 1 }, partialFilterExpression: { unread: { $exists: true } } },
 			{ key: { 'pinnedBy._id': 1 }, sparse: true },
 			{ key: { 'starred._id': 1 }, sparse: true },
+			{ key: { 'u._id': 1, 'reactions': 1 }, sparse: true }, // used for Activity Hub reactions-by-user queries
 
 			// discussions
 			{ key: { drid: 1 }, sparse: true },
@@ -72,6 +73,7 @@ export class MessagesRaw extends BaseRaw<IMessage> implements IMessagesModel {
 			{ key: { tcount: 1, tlm: 1 }, sparse: true },
 			{ key: { rid: 1, tlm: -1 }, partialFilterExpression: { tcount: { $exists: true } } }, // used for the List Threads
 			{ key: { rid: 1, tcount: 1 } }, // used for the List Threads Count
+			{ key: { replies: 1 }, sparse: true }, // used for Activity Hub threads-by-user queries
 
 			// livechat
 			{ key: { 'navigation.token': 1 }, sparse: true },

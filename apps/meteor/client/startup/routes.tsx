@@ -113,7 +113,7 @@ declare module '@rocket.chat/ui-contexts' {
 			pattern: '/call-history/:tab?/:historyId?';
 		};
 		'activity-hub': {
-			pathname: `/activity-hub${`/${'mentions' | 'starred'}` | ''}`;
+			pathname: `/activity-hub${`/${'all' | 'mentions' | 'threads' | 'reactions' | 'starred' | 'invitations'}` | ''}`;
 			pattern: '/activity-hub/:tab?';
 		};
 	}
