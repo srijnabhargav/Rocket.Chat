@@ -1,8 +1,7 @@
 import type { IMessage, IThreadMainMessage } from '@rocket.chat/core-typings';
 import { Box, Icon, TextInput, Select, Callout, Throbber } from '@rocket.chat/fuselage';
-import { useResizeObserver, useAutoFocus, useLocalStorage, useDebouncedValue } from '@rocket.chat/fuselage-hooks';
+import { useAutoFocus, useLocalStorage, useDebouncedValue } from '@rocket.chat/fuselage-hooks';
 import {
-	VirtualizedScrollbars,
 	ContextualbarClose,
 	ContextualbarContent,
 	ContextualbarHeader,
@@ -15,10 +14,10 @@ import {
 import { useTranslation, useUserId, useRoomToolbox } from '@rocket.chat/ui-contexts';
 import type { FormEvent } from 'react';
 import { useMemo, useState, useCallback } from 'react';
-import { Virtuoso } from 'react-virtuoso';
 
 import ThreadListItem from './components/ThreadListItem';
 import { useThreadsList } from './hooks/useThreadsList';
+import { VirtualList } from '../../../../components/VirtualList';
 import { getErrorMessage } from '../../../../lib/errorHandling';
 import { useRoom, useRoomSubscription } from '../../contexts/RoomContext';
 import { useGoToThread } from '../../hooks/useGoToThread';
@@ -33,10 +32,6 @@ const ThreadList = () => {
 	const handleTabBarCloseButtonClick = useCallback(() => {
 		closeTab();
 	}, [closeTab]);
-
-	const { ref, contentBoxSize: { inlineSize = 378, blockSize = 1 } = {} } = useResizeObserver<HTMLElement>({
-		debounceDelay: 200,
-	});
 
 	const autoFocusRef = useAutoFocus<HTMLInputElement>(true);
 
@@ -103,7 +98,7 @@ const ThreadList = () => {
 		300,
 	);
 
-	const { isPending, error, isSuccess, data, fetchNextPage } = useThreadsList(options);
+	const { isPending, error, isSuccess, data, fetchNextPage, hasNextPage, isFetchingNextPage } = useThreadsList(options);
 
 	const items = data?.items || [];
 	const itemCount = data?.itemCount ?? 0;
@@ -150,29 +145,24 @@ const ThreadList = () => {
 
 				{isSuccess && itemCount === 0 && <ContextualbarEmptyContent title={t('No_Threads')} />}
 
-				<Box flexGrow={1} flexShrink={1} overflow='hidden' display='flex' ref={ref}>
+				<Box flexGrow={1} flexShrink={1} overflow='hidden' display='flex'>
 					{!error && itemCount > 0 && items.length > 0 && (
-						<VirtualizedScrollbars>
-							<Virtuoso
-								style={{
-									height: blockSize,
-									width: inlineSize,
-								}}
-								totalCount={itemCount}
-								endReached={() => fetchNextPage()}
-								overscan={25}
-								data={items}
-								itemContent={(_index, data: IThreadMainMessage) => (
-									<ThreadListItem
-										thread={data}
-										unread={subscription?.tunread ?? []}
-										unreadUser={subscription?.tunreadUser ?? []}
-										unreadGroup={subscription?.tunreadGroup ?? []}
-										onClick={handleThreadClick}
-									/>
-								)}
-							/>
-						</VirtualizedScrollbars>
+						<VirtualList
+							items={items}
+							totalCount={itemCount}
+							estimateSize={() => 120}
+							overscan={25}
+							onEndReached={!hasNextPage || isFetchingNextPage ? undefined : () => fetchNextPage()}
+							renderItem={(data: IThreadMainMessage) => (
+								<ThreadListItem
+									thread={data}
+									unread={subscription?.tunread ?? []}
+									unreadUser={subscription?.tunreadUser ?? []}
+									unreadGroup={subscription?.tunreadGroup ?? []}
+									onClick={handleThreadClick}
+								/>
+							)}
+						/>
 					)}
 				</Box>
 			</ContextualbarContent>

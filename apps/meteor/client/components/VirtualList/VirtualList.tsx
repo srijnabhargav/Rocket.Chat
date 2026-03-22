@@ -45,12 +45,30 @@ const VirtualList = <T,>({
 
 	const virtualItems = virtualizer.getVirtualItems();
 	const lastVirtualItemIndex = virtualItems[virtualItems.length - 1]?.index;
+	const lastItem = items.at(-1);
+	const lastTriggeredStateRef = useRef<{ itemsLength: number; totalCount: number; lastItem: T | undefined } | null>(null);
 
 	useEffect(() => {
-		if (lastVirtualItemIndex !== undefined && lastVirtualItemIndex >= items.length - 1 && items.length < totalCount) {
-			onEndReachedRef.current?.();
+		if (lastVirtualItemIndex === undefined || lastVirtualItemIndex < items.length - 1 || items.length >= totalCount) {
+			return;
 		}
-	}, [lastVirtualItemIndex, items.length, totalCount]);
+
+		const alreadyTriggered =
+			lastTriggeredStateRef.current?.itemsLength === items.length &&
+			lastTriggeredStateRef.current?.totalCount === totalCount &&
+			lastTriggeredStateRef.current?.lastItem === lastItem;
+
+		if (alreadyTriggered) {
+			return;
+		}
+
+		lastTriggeredStateRef.current = {
+			itemsLength: items.length,
+			totalCount,
+			lastItem,
+		};
+		onEndReachedRef.current?.();
+	}, [lastItem, lastVirtualItemIndex, items.length, totalCount]);
 
 	return (
 		<CustomScrollbars ref={setScrollElement}>

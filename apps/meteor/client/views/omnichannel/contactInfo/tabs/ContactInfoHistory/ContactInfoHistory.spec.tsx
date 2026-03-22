@@ -83,11 +83,14 @@ describe('ContactInfoHistory', () => {
 		const history = [
 			{
 				_id: 'chat-id-1',
+				ts: new Date().toISOString(),
+				v: { _id: 'visitor-id' },
+				msgs: 1,
 				source: { type: 'widget' },
-				lastMessage: { msg: 'Hello', ts: new Date() },
+				lastMessage: { rid: 'chat-id-1', msg: 'Hello', ts: new Date().toISOString() },
 				verified: true,
 			},
-		];
+		] as any;
 
 		render(<ContactInfoHistory contact={contact} setChatId={jest.fn()} />, {
 			wrapper: mockAppRoot()
